@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <uart/uart.h>
 #include <shell/shell.h>
+#include <pages/page.h>
 
 void kmain(void) {
 
@@ -9,6 +10,19 @@ void kmain(void) {
 
     uart_puts("[+] Init Shell\r\n");
     shell_init();
+
+    page_init();
+    uart_puts("[+] Init Page Allocator\r\n");
+    void* page1 = page_alloc(1);
+    uart_printf("Allocated page at: 0x%x\r\n", (uint64_t)page1);
+    void *p2 = page_alloc(1);
+    uart_puts("\r\n");
+    uart_printf("Allocated page at: 0x%x\r\n", (uint64_t)p2);
+    page_free(page1);
+    uart_puts("\r\n");
+    uart_printf("Freed page at: 0x%x\r\n", (uint64_t)page1);
+
+    uart_puts("\r\n");
 
     while (1) {
          shell_update();
