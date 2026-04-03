@@ -54,10 +54,12 @@ void* page_alloc(int n){
     // struct Page* page = page_free_list_head; // get the head of the free list
     // page_free_list_head = page->next; // move the head to the next free page
     // return (void*)page; // return the allocated page
+    uint32_t i = 0;
 
-    for(uint32_t i = 0;i<=total_pages-n;i++){
+    while(i<=total_pages-n){
+        uint32_t j;
         int found = 1; // flag to indicate if we found n contiguous free pages
-        for(uint32_t j = i; j < i+n; j++){
+        for(j = i; j < i+n; j++){
             if(ptr_to_descriptaors[j].flags & PAGE_TAKEN){ //
                 found = 0; // if any of the pages in the range is taken, set found to 0
                 break;
@@ -70,6 +72,7 @@ void* page_alloc(int n){
             ptr_to_descriptaors[i + n - 1].flags |= PAGE_LAST; // mark the last page in the range with the PAGE_LAST flag for future enhancements
             return (void*)(actual_heap_start + (i * PAGE_SIZE)); // return the starting address of the allocated pages
         }
+        i = j+1;
     }
     uart_puts("Out of memory!\n");
     return NULL; // no contiguous block of n free pages found
