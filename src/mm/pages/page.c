@@ -36,6 +36,7 @@ void page_init(void){
     for(uint32_t i = 0; i < total_pages; i++){
         ptr_to_descriptaors[i].flags = 0; // initialize all page descriptors as free
         //page_free((void*)(actual_heap_start + (i * PAGE_SIZE))); // add each page to the free list
+        ptr_to_descriptaors[i].block_size = 0; // initialize block size to 0 for all pages
     }
     uart_puts("[+] Page Allocator Initialized\r\n");
     
@@ -47,32 +48,38 @@ void page_init(void){
 //  n unused for now, but can be used to allocate multiple contiguous pages in the future
 // for now just ignore warning about it
 void* page_alloc(int n){
-    // if(page_free_list_head == NULL){
-    //     uart_puts("Out of memory!\n");
-    //     return NULL; // no free pages available
-    // }
-    // struct Page* page = page_free_list_head; // get the head of the free list
-    // page_free_list_head = page->next; // move the head to the next free page
-    // return (void*)page; // return the allocated page
+    if (n <= 0) return NULL; // invalid request
     uint32_t i = 0;
 
     while(i<=total_pages-n){
-        uint32_t j;
-        int found = 1; // flag to indicate if we found n contiguous free pages
-        for(j = i; j < i+n; j++){
-            if(ptr_to_descriptaors[j].flags & PAGE_TAKEN){ //
-                found = 0; // if any of the pages in the range is taken, set found to 0
+    // if we hit a start block of taken pages, skip the entire block
+       if (ptr_to_descriptaors[i].flags & PAGE_TAKEN)
+       {
+            i += ptr_to_descriptaors[i].block_size;
+            continue;
+       }
+       
+       int found = 1;
+       uint32_t j;
+
+       for(j= i; j < i+n; j++){
+            if (ptr_to_descriptaors[j].flags & PAGE_TAKEN)
+            {
+                found = 0;
                 break;
             }
-        }
+       }
+
         if(found){
-            for(uint32_t j = i;j<i+n;j++){
+            for(j = i;j<i+n;j++){
                 ptr_to_descriptaors[j].flags |= PAGE_TAKEN; // mark the pages as taken
             }
-            ptr_to_descriptaors[i + n - 1].flags |= PAGE_LAST; // mark the last page in the range with the PAGE_LAST flag for future enhancements
+            ptr_to_descriptaors[i].block_size = n; // store the block size in the first page descriptor of the allocated block
             return (void*)(actual_heap_start + (i * PAGE_SIZE)); // return the starting address of the allocated pages
         }
-        i = j+1;
+        else {
+            i = j; // skip the checked pages and continue searching
+        }
     }
     uart_puts("Out of memory!\n");
     return NULL; // no contiguous block of n free pages found
@@ -82,16 +89,17 @@ void page_free(void* p){
     if (p == NULL) return;
     uint64_t addr = (uint64_t)p;
     uint32_t i = (uint32_t)((addr - actual_heap_start) / PAGE_SIZE);
+
+    if (!(ptr_to_descriptaors[i].flags & PAGE_TAKEN)) {
+        uart_printf("ERROR: Double free or invalid pointer at index %d!\r\n", i);
+        return;
+    }
+
+    uint32_t block_size = ptr_to_descriptaors[i].block_size; // get the block size from the first page descriptor of the block
+
     uart_printf("Freeing page at index: %d\r\n", i);
-    while(i < total_pages){
-        uint8_t flags = ptr_to_descriptaors[i].flags;
-        ptr_to_descriptaors[i].flags = 0; // Clear all flags
-        
-        if (flags & PAGE_LAST) {
-            break; // We reached the end of this allocation
-        }
-        i++;
+    for(uint32_t k = 0; k < block_size; k++){
+        ptr_to_descriptaors[i+k].flags &= ~PAGE_TAKEN; // mark all pages in the block as free
+        ptr_to_descriptaors[i+k].block_size = 0; // reset the block size for all pages in the block
     }
 }
-
-
