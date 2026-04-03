@@ -5,8 +5,8 @@ CFLAGS = -Wall -Wextra -march=rv64gc -mabi=lp64d -mcmodel=medany -ffreestanding 
 
 all: os.elf
 
-os.elf: src/asm/boot.S src/asm/trap.S src/kernel.c src/uart/uart.c src/shell/shell.c
-	$(CC) $(CFLAGS) -Tsrc/lds/virt.lds src/asm/boot.S src/asm/trap.S src/kernel.c src/uart/uart.c src/shell/shell.c src/pages/page.c -o os.elf
+os.elf: src/asm/boot.S src/asm/trap.S src/kernel.c src/uart/uart.c src/init/shell/shell.c src/mm/pages/page.c
+	$(CC) $(CFLAGS) -Tsrc/lds/virt.lds src/asm/boot.S src/asm/trap.S src/kernel.c src/uart/uart.c src/init/shell/shell.c src/mm/pages/page.c -o os.elf
 
 run: all
 	qemu-system-riscv64 -machine virt -cpu rv64 -smp 4 -m 128M -nographic -serial mon:stdio -bios none -kernel os.elf

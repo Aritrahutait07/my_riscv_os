@@ -1,5 +1,5 @@
 #include "shell.h"
-#include "../uart/uart.h"
+#include <uart/uart.h>
 
 #define MAX_BUF 128
 static char buffer[MAX_BUF];

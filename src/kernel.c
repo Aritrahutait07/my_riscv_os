@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <uart/uart.h>
-#include <shell/shell.h>
-#include <pages/page.h>
+#include <init/shell/shell.h>
+#include <mm/pages/page.h>
 
 void kmain(void) {
 
