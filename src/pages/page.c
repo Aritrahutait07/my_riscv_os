@@ -4,33 +4,91 @@
 #define NULL ((void*)0)
 #endif
 
+
 extern uint64_t _bss_end; // where kernel global zero-initialized memory ends
 extern uint64_t _stack_end; // where kernel stack ends
+extern uint64_t _heap_start; // where kernel heap starts
+extern uint64_t _heap_size; // size of the kernel heap
+static PageDescriptor *ptr_to_descriptaors; // pointer to the start of the page descriptors array
+static uint32_t total_pages; // total number of pages available in the system
+static uint64_t actual_heap_start; // actual start of the heap after the page descriptors
 
-static struct Page *page_free_list_head = NULL; // head of the free page list
+
+//static struct Page *page_free_list_head = NULL; // head of the free page list
 
 void page_init(void){
-    uint64_t start = (uint64_t)(&_bss_end); // start of free memory
-    uint64_t end = 0x80000000 + (128 * 1024 * 1024); // end of physical memory (128MB)
-    start = (start + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1); // align start to the next page boundary
-    for(uint64_t i = start ; i< end; i += PAGE_SIZE){
-        page_free((void*)i); // add each page to the free list
+    // uint64_t start = (uint64_t)(&_bss_end); // start of free memory
+    // uint64_t end = 0x80000000 + (128 * 1024 * 1024); // end of physical memory (128MB)
+    // start = (start + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1); // align start to the next page boundary
+    // for(uint64_t i = start ; i< end; i += PAGE_SIZE){
+    //     page_free((void*)i); // add each page to the free list
+    // }
+    uint64_t h_start = (uint64_t)&_heap_start;
+    uint64_t h_size  = (uint64_t)&_heap_size;
+    h_start = (h_start + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+    total_pages =(uint32_t) h_size / PAGE_SIZE; // calculate total number of pages available
+    ptr_to_descriptaors = (PageDescriptor*)h_start; // point to the start of the page descriptors array
+    uint64_t descriptors_size = total_pages * sizeof(PageDescriptor); // calculate the size of the page descriptors array
+    uint64_t descriptors_pages = (descriptors_size + PAGE_SIZE - 1) / PAGE_SIZE; // calculate how many pages are needed for the descriptors
+    actual_heap_start = (h_start + (descriptors_pages * PAGE_SIZE) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);// calculate the actual start of the heap after the page descriptors
+    uint64_t overhead = actual_heap_start - h_start; // calculate the overhead caused by the page descriptors
+    total_pages -= (uint32_t)(overhead / PAGE_SIZE); // reduce the total number of pages available for allocation by the number of pages used for the descriptors
+    for(uint32_t i = 0; i < total_pages; i++){
+        ptr_to_descriptaors[i].flags = 0; // initialize all page descriptors as free
+        //page_free((void*)(actual_heap_start + (i * PAGE_SIZE))); // add each page to the free list
     }
+    uart_puts("[+] Page Allocator Initialized\r\n");
+    
+
+
+
+
 }
 //  n unused for now, but can be used to allocate multiple contiguous pages in the future
 // for now just ignore warning about it
 void* page_alloc(int n){
-    if(page_free_list_head == NULL){
-        uart_puts("Out of memory!\n");
-        return NULL; // no free pages available
+    // if(page_free_list_head == NULL){
+    //     uart_puts("Out of memory!\n");
+    //     return NULL; // no free pages available
+    // }
+    // struct Page* page = page_free_list_head; // get the head of the free list
+    // page_free_list_head = page->next; // move the head to the next free page
+    // return (void*)page; // return the allocated page
+
+    for(uint32_t i = 0;i<=total_pages-n;i++){
+        int found = 1; // flag to indicate if we found n contiguous free pages
+        for(uint32_t j = i; j < i+n; j++){
+            if(ptr_to_descriptaors[j].flags & PAGE_TAKEN){ //
+                found = 0; // if any of the pages in the range is taken, set found to 0
+                break;
+            }
+        }
+        if(found){
+            for(uint32_t j = i;j<i+n;j++){
+                ptr_to_descriptaors[j].flags |= PAGE_TAKEN; // mark the pages as taken
+            }
+            ptr_to_descriptaors[i + n - 1].flags |= PAGE_LAST; // mark the last page in the range with the PAGE_LAST flag for future enhancements
+            return (void*)(actual_heap_start + (i * PAGE_SIZE)); // return the starting address of the allocated pages
+        }
     }
-    struct Page* page = page_free_list_head; // get the head of the free list
-    page_free_list_head = page->next; // move the head to the next free page
-    return (void*)page; // return the allocated page
+    uart_puts("Out of memory!\n");
+    return NULL; // no contiguous block of n free pages found
 }
 
-void page_free(void* page){
-    struct Page* new_page = (struct Page*)page; // create a new page structure
-    new_page->next = page_free_list_head; // point to the current head of the free list
-    page_free_list_head = new_page; // update the head to the newly freed page
+void page_free(void* p){
+    if (p == NULL) return;
+    uint64_t addr = (uint64_t)p;
+    uint32_t i = (uint32_t)((addr - actual_heap_start) / PAGE_SIZE);
+    uart_printf("Freeing page at index: %d\r\n", i);
+    while(i < total_pages){
+        uint8_t flags = ptr_to_descriptaors[i].flags;
+        ptr_to_descriptaors[i].flags = 0; // Clear all flags
+        
+        if (flags & PAGE_LAST) {
+            break; // We reached the end of this allocation
+        }
+        i++;
+    }
 }
+
+

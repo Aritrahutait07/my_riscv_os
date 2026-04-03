@@ -24,10 +24,15 @@ SECTIONS
   .bss : {
     _bss_start = .;
     *(.bss .bss.*)
-    _bss_end = .;
+    _bss_end = 
+    .;
   }
+  
 
   . = ALIGN(16);
   . += 0x10000; 
   _stack_end = .;
+  _heap_start = _stack_end;
+  _memory_end = 0x88000000;
+  _heap_size  = _memory_end - _heap_start;
 }
