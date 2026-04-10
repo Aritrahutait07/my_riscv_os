@@ -7,7 +7,6 @@
 #define PAGE_SIZE 4096
 
 #define PAGE_TAKEN (1 << 0) // Example flag to indicate if the page is allocated
-#define PAGE_LAST  (1 << 1) // Example flag to indicate if this is the last page in a contiguous allocation (useful for future enhancements)
 
 // Page structure pointing to the next page in the free list
 // struct Page{
@@ -15,8 +14,9 @@
 // };
 // Moving to the approach of descriptor array to avoid the need for dynamic memory allocation for the free list nodes
 typedef struct {
-    uint8_t flags; // can be used for future enhancements (e.g., to track allocated vs free pages)
-}PageDescriptor;
+    uint8_t flags;       // 1 if taken, 0 if free
+    uint32_t block_size; // Stores 'n'. Only the FIRST page of a block needs this!
+} PageDescriptor;
 
 
 
