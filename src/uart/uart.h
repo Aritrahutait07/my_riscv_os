@@ -26,5 +26,5 @@ void mmio_write(uint64_t address, uint64_t offset, uint8_t value);
 uint8_t mmio_read(uint64_t address, uint64_t offset);
 void uart_puthex(uint64_t val);
 void uart_printf(const char *fmt, ...);
-
+void __attribute__((noreturn)) panic(const char *message, const char *file, uint32_t line);
 #endif

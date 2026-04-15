@@ -69,14 +69,14 @@ void __attribute__((noreturn)) abort() {
     }
 }
 
-void panic(const char *message, const char *file, uint32_t line) {
-    (void)message; 
-    (void)file;
-    (void)line;
-
+void __attribute__((noreturn)) panic(const char *message, const char *file, uint32_t line){
+    uart_puts("\r\n--- KERNEL PANIC ---\r\n");
+    uart_printf("Message: %s\r\n", message);
+    uart_printf("At: %s:%d\r\n", file, line);
+    uart_puts("----------------------\r\n");
+    uart_puts("System halted.\r\n");
     abort();
 }
-
 void mmio_write(uint64_t address, uint64_t offset, uint8_t value) {
     volatile uint8_t *reg = (volatile uint8_t *)(address + offset);
     *reg = value;

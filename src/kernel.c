@@ -2,8 +2,22 @@
 #include <uart/uart.h>
 #include <init/shell/shell.h>
 #include <mm/pages/page.h>
+#include <trap/trap.h>
 
 void kmain(void) {
+    // void trigger_illegal_instruction() {
+    //     asm volatile(".word 0xFFFFFFFF");  // invalid opcode
+    // }
+    // void trigger_ecall() {
+    //     asm volatile("ecall");
+    // }
+    void trigger_page_fault() {
+        volatile int *ptr = (int *)0x0;  // invalid address
+        *ptr = 10;  // will crash
+    }
+
+
+
 
     uart_puts("[+] Starting OS\r\n[+] Init UART\r\n");
     uart_init();
@@ -32,9 +46,15 @@ void kmain(void) {
     page_free(page1);
 
 
+
+
     uart_puts("\r\n");
 
     while (1) {
          shell_update();
+        //  trigger_illegal_instruction();
+        // trigger_ecall();
+        trigger_page_fault();
+
     }
 }
