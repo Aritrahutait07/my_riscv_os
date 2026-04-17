@@ -1,8 +1,6 @@
 #include "page.h"
 #include <uart/uart.h>
-#ifndef NULL
-#define NULL ((void*)0)
-#endif
+#include <stddef.h>
 
 
 extern uint64_t _bss_end; // where kernel global zero-initialized memory ends
@@ -13,7 +11,13 @@ static PageDescriptor *ptr_to_descriptaors; // pointer to the start of the page 
 static uint32_t total_pages; // total number of pages available in the system
 static uint64_t actual_heap_start; // actual start of the heap after the page descriptors
 
+uint64_t page_get_heap_start(void) {
+    return actual_heap_start;
+}
 
+PageDescriptor* page_get_descriptors(void) {
+    return ptr_to_descriptaors;
+}
 //static struct Page *page_free_list_head = NULL; // head of the free page list
 
 void page_init(void){
@@ -102,4 +106,12 @@ void page_free(void* p){
         ptr_to_descriptaors[i+k].flags &= ~PAGE_TAKEN; // mark all pages in the block as free
         ptr_to_descriptaors[i+k].block_size = 0; // reset the block size for all pages in the block
     }
+}
+
+int get_page_index_from_address(void* addr) {
+    uint64_t address = (uint64_t)addr;
+    if (address < actual_heap_start) {
+        return -1; // Address is out of bounds
+    }
+    return (int)((address - actual_heap_start) / PAGE_SIZE);
 }
