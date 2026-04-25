@@ -58,7 +58,11 @@ uint64_t m_trap(uint64_t epc, uint64_t tval, uint64_t cause, uint64_t hart, uint
                 return_epc += 4;
                 break;
             default:
-                panic("Unhandled sync trap", __FILE__, __LINE__);
+                uart_printf("\r\n!!! UNHANDLED SYNC TRAP !!!\r\n");
+                uart_printf("Exception Code: %d\r\n", cause_code);
+                uart_printf("Faulting PC   : 0x%x\r\n", epc);
+                uart_printf("Faulting Value: 0x%x\r\n", tval); // mtval
+                panic("System Halted", __FILE__, __LINE__);
                 break;
         }
     }

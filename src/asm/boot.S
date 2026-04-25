@@ -26,7 +26,7 @@ _start:
     li      t0, (0b11 << 11) 
     csrw    mstatus, t0
 
-    la      t1, kmain         
+    la      t1, kinit       
     csrw    mepc, t1
     la      t2, asm_trap_vector
     csrw    mtvec, t2
